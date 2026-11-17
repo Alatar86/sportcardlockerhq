@@ -643,12 +643,15 @@ var META_PIXEL_ID = null;
   }).join("");
   }
   renderCards();
+  function fallBack(){
+    /* PayPal's cart didn't start: go back to the one-case payment links. */
+    useCart = false; $("cartSlot").innerHTML = ""; $("checkoutRow").hidden = true; renderCards();
+  }
   if (useCart) {
     try {
       CASES.forEach(function(c){ if (c.cartId && !soldOut(c)) window.cartPaypal.AddToCart({ id: c.cartId }); });
       $("cartSlot").innerHTML = '<paypal-cart-button data-id="pp-view-cart"></paypal-cart-button>';
       window.cartPaypal.Cart({ id: "pp-view-cart" });
-      $("checkoutRow").hidden = false;
       var openCart = function(){
         var b = document.querySelector("#cartSlot paypal-cart-button button") || document.querySelector("#cartSlot paypal-cart-button [role=button]");
         track("InitiateCheckout", {currency:"USD"});
@@ -663,18 +666,25 @@ var META_PIXEL_ID = null;
         var n = m ? parseInt(m[1], 10) : 0;
         var t = n ? "Check out (" + n + ")" : "Check out";
         if ($("checkoutBtn").textContent !== t) $("checkoutBtn").textContent = t;
+        $("checkoutRow").hidden = !(useCart && b);
       };
       new MutationObserver(syncCount).observe($("cartSlot"), {subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:["aria-label"]});
       syncCount();
+      /* If PayPal's order boxes or cart button haven't shown up after 10 seconds, use the payment links instead. */
+      setTimeout(function(){
+        if (!useCart) return;
+        var missing = CASES.some(function(c){
+          var box = document.querySelector('[data-cartcase="' + c.id + '"]');
+          return box && !box.querySelector("button");
+        });
+        if (missing || !document.querySelector("#cartSlot paypal-cart-button button")) fallBack();
+      }, 10000);
       $("caseGrid").addEventListener("click", function(e){
         var box = e.target.closest("[data-cartcase]"); if (!box || !e.target.closest("button")) return;
         var c = CASES.filter(function(x){ return x.id === box.getAttribute("data-cartcase"); })[0];
         if (c) track("AddToCart", {content_name:c.name, value:(special ? c.show : c.regular), currency:"USD"});
       });
-    } catch (err) {
-      /* PayPal's cart didn't start: go back to the one-case payment links. */
-      useCart = false; $("cartSlot").innerHTML = ""; $("checkoutRow").hidden = true; renderCards();
-    }
+    } catch (err) { fallBack(); }
   }
   $("caseGrid").addEventListener("click", function(e){
     var a = e.target.closest("[data-case]"); if (!a) return;
