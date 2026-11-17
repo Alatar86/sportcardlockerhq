@@ -250,6 +250,8 @@ footer .copy{border-top:1px solid #1d2028;margin-top:24px;padding-top:16px;font-
 .cartslot paypal-cart-button{display:block}
 .buybox{display:grid;gap:10px}
 .buybox paypal-add-to-cart-button{display:block;font-family:var(--body);color:var(--fg)}
+.buybox paypal-add-to-cart-button [id^="form-container-"]{max-width:none!important;width:100%!important}
+.buybox paypal-add-to-cart-button textarea{height:52px!important;min-height:52px!important;resize:vertical}
 .buybox paypal-add-to-cart-button .hero-container,
 .buybox paypal-add-to-cart-button .hero-img,
 .buybox paypal-add-to-cart-button .item-title,
@@ -655,11 +657,14 @@ var META_PIXEL_ID = null;
       $("checkoutBtn").addEventListener("click", openCart);
       /* Mirror the cart count onto the Check out button: "Check out (2)". */
       var syncCount = function(){
-        var m = ($("cartSlot").textContent || "").match(/\d+/);
-        var n = m ? parseInt(m[0], 10) : null;
-        $("checkoutBtn").textContent = (n ? "Check out (" + n + ")" : "Check out");
+        var b = document.querySelector("#cartSlot paypal-cart-button button");
+        var label = b ? (b.getAttribute("aria-label") || "") : "";
+        var m = label.match(/(\d+)\s*item/i);
+        var n = m ? parseInt(m[1], 10) : 0;
+        var t = n ? "Check out (" + n + ")" : "Check out";
+        if ($("checkoutBtn").textContent !== t) $("checkoutBtn").textContent = t;
       };
-      new MutationObserver(syncCount).observe($("cartSlot"), {subtree:true, childList:true, characterData:true});
+      new MutationObserver(syncCount).observe($("cartSlot"), {subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:["aria-label"]});
       syncCount();
       $("caseGrid").addEventListener("click", function(e){
         var box = e.target.closest("[data-cartcase]"); if (!box || !e.target.closest("button")) return;
